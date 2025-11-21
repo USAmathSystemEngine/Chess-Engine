@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Architecture Analysis: Chess App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Fira+Code:wght@400;600&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .code-font { font-family: 'Fira Code', monospace; }
+        .section-card { transition: all 0.3s ease; }
+        .section-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+        .active-tab { border-bottom: 2px solid #3b82f6; color: #3b82f6; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 h-screen flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 p-4 shadow-sm flex-none">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-800">Chess App Architecture Analysis</h1>
+                <p class="text-slate-500 text-sm">Interactive Breakdown of 1,440 Lines of Code</p>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="text-right">
+                    <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Coverage</div>
+                    <div class="text-xl font-bold text-emerald-600" id="coverage-percent">0%</div>
+                </div>
+                <div class="w-32 h-2 bg-slate-200 rounded-full overflow-hidden">
+                    <div id="progress-bar" class="h-full bg-emerald-500 w-0 transition-all duration-500"></div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="flex-grow flex overflow-hidden">
+        
+        <!-- Sidebar Navigation -->
+        <aside class="w-64 bg-slate-100 border-r border-slate-200 overflow-y-auto flex-none flex flex-col">
+            <div class="p-4 border-b border-slate-200">
+                <h3 class="font-bold text-slate-700 mb-2">Code Structure</h3>
+                <div class="space-y-1">
+                    <button onclick="showSection('overview')" class="w-full text-left px-3 py-2 rounded hover:bg-white hover:text-blue-600 transition text-sm font-medium text-slate-600 active-tab" id="nav-overview">1. Overview & Stats</button>
+                    <button onclick="showSection('html')" class="w-full text-left px-3 py-2 rounded hover:bg-white hover:text-blue-600 transition text-sm font-medium text-slate-600" id="nav-html">2. HTML/DOM Structure</button>
+                    <button onclick="showSection('css')" class="w-full text-left px-3 py-2 rounded hover:bg-white hover:text-blue-600 transition text-sm font-medium text-slate-600" id="nav-css">3. CSS & Styling</button>
+                    <button onclick="showSection('state')" class="w-full text-left px-3 py-2 rounded hover:bg-white hover:text-blue-600 transition text-sm font-medium text-slate-600" id="nav-state">4. Global State</button>
+                    <button onclick="showSection('logic')" class="w-full text-left px-3 py-2 rounded hover:bg-white hover:text-blue-600 transition text-sm font-medium text-slate-600" id="nav-logic">5. Core Chess Logic</button>
+                    <button onclick="showSection('engine')" class="w-full text-left px-3 py-2 rounded hover:bg-white hover:text-blue-600 transition text-sm font-medium text-slate-600" id="nav-engine">6. Stockfish Engine</button>
+                    <button onclick="showSection('gemini')" class="w-full text-left px-3 py-2 rounded hover:bg-white hover:text-blue-600 transition text-sm font-medium text-slate-600" id="nav-gemini">7. Gemini AI Integration</button>
+                    <button onclick="showSection('ui')" class="w-full text-left px-3 py-2 rounded hover:bg-white hover:text-blue-600 transition text-sm font-medium text-slate-600" id="nav-ui">8. UI Interaction & Sound</button>
+                </div>
+            </div>
+            <div class="p-4 mt-auto">
+                <div class="bg-blue-50 p-3 rounded border border-blue-100">
+                    <h4 class="text-xs font-bold text-blue-800 uppercase mb-1">Tech Stack</h4>
+                    <ul class="text-xs text-blue-700 space-y-1">
+                        <li>• HTML5 / CSS3</li>
+                        <li>• Tailwind CSS (CDN)</li>
+                        <li>• Tone.js (Audio)</li>
+                        <li>• Stockfish.js (WASM Worker)</li>
+                        <li>• Google Gemini API</li>
+                    </ul>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Content Area -->
+        <main class="flex-grow bg-white overflow-y-auto p-8" id="content-area">
+            <!-- Dynamic Content Injected Here -->
+        </main>
+
+    </div>
+
+    <script>
+        // Data for the sections
+        const sections = {
+            overview: {
+                title: "Architecture Overview",
+                coverage: 15,
+                content: `
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                            <h3 class="text-lg font-bold text-slate-800 mb-4">Code Distribution</h3>
+                            <canvas id="codeChart"></canvas>
+                        </div>
+                        <div class="space-y-4">
+                            <div class="p-4 bg-blue-50 border-l-4 border-blue-500 rounded">
+                                <h4 class="font-bold text-blue-800">Single File Architecture (SPA)</h4>
+                                <p class="text-sm text-blue-700 mt-1">The entire application resides in one <code>index.html</code> file. This simplifies deployment but requires strict organization. Logic is handled via a large <code>&lt;script&gt;</code> block at the bottom.</p>
+                            </div>
+                            <div class="p-4 bg-purple-50 border-l-4 border-purple-500 rounded">
+                                <h4 class="font-bold text-purple-800">Event-Driven Design</h4>
+                                <p class="text-sm text-purple-700 mt-1">The app relies heavily on user events (clicks, drags) and Web Worker messages (from the engine) to trigger state updates and UI renders.</p>
+                            </div>
+                            <div class="p-4 bg-orange-50 border-l-4 border-orange-500 rounded">
+                                <h4 class="font-bold text-orange-800">External Dependencies</h4>
+                                <p class="text-sm text-orange-700 mt-1">Libraries like Tailwind, Tone.js, and Stockfish.js are loaded via CDN to keep the local file lightweight.</p>
+                            </div>
+                        </div>
+                    </div>
+                `
+            },
+            html: {
+                title: "HTML & DOM Structure",
+                coverage: 25,
+                content: `
+                    <div class="space-y-6">
+                        <div class="section-card bg-white p-6 rounded-xl border border-slate-200">
+                            <h3 class="font-bold text-lg mb-2">The Container Layout (Flexbox)</h3>
+                            <p class="text-slate-600 mb-4">The app uses a responsive Flexbox layout. On desktop, it splits into two main columns.</p>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="bg-slate-100 p-3 rounded border border-slate-300 text-center text-sm font-mono">Left Column<br>(Board & Eval)</div>
+                                <div class="bg-slate-100 p-3 rounded border border-slate-300 text-center text-sm font-mono">Right Column<br>(Settings & History)</div>
+                            </div>
+                        </div>
+
+                        <div class="section-card bg-white p-6 rounded-xl border border-slate-200">
+                            <h3 class="font-bold text-lg mb-2">The Chess Board (Grid)</h3>
+                            <p class="text-slate-600 mb-2">Lines ~130-145 define the board container.</p>
+                            <pre class="bg-slate-800 text-slate-100 p-4 rounded-lg text-sm overflow-x-auto code-font">
+&lt;div id="board" class="grid grid-cols-8 grid-rows-8 w-full h-full z-10 relative"&gt;&lt;/div&gt;
+                            </pre>
+                            <ul class="list-disc list-inside mt-3 text-sm text-slate-600 space-y-1">
+                                <li><strong>CSS Grid:</strong> Used to create the 8x8 layout perfectly.</li>
+                                <li><strong>Z-Index:</strong> <code>z-10</code> ensures pieces sit above the background but below overlays.</li>
+                                <li><strong>Dynamic Generation:</strong> The actual squares (<code>div</code>) are generated by JavaScript loops, not hardcoded HTML.</li>
+                            </ul>
+                        </div>
+
+                        <div class="section-card bg-white p-6 rounded-xl border border-slate-200">
+                            <h3 class="font-bold text-lg mb-2">Modals & Overlays</h3>
+                            <p class="text-slate-600 text-sm mb-2">Hidden components that appear via JS class toggling.</p>
+                            <ul class="list-disc list-inside text-sm text-slate-600 space-y-2">
+                                <li><code>#board-overlay</code>: An SVG layer sitting on top of the board for drawing arrows.</li>
+                                <li><code>#game-over-modal</code>: Absolute positioned div with semi-transparent background.</li>
+                                <li><code>#coach-modal</code>: The container for the Gemini AI responses.</li>
+                            </ul>
+                        </div>
+                    </div>
+                `
+            },
+            css: {
+                title: "CSS & Styling",
+                coverage: 35,
+                content: `
+                    <div class="space-y-6">
+                        <div class="section-card bg-white p-6 rounded-xl border border-slate-200">
+                            <h3 class="font-bold text-lg mb-2">Tailwind CSS</h3>
+                            <p class="text-slate-600 mb-4">90% of styling is handled by utility classes directly in HTML.</p>
+                            <div class="flex gap-2 flex-wrap mb-4">
+                                <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-mono">bg-slate-900</span>
+                                <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-mono">text-slate-100</span>
+                                <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-mono">flex flex-col</span>
+                                <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-mono">hover:scale-105</span>
+                            </div>
+                            <p class="text-sm text-slate-500">This approach keeps the <code>&lt;style&gt;</code> block small and focuses only on custom behaviors.</p>
+                        </div>
+
+                        <div class="section-card bg-white p-6 rounded-xl border border-slate-200">
+                            <h3 class="font-bold text-lg mb-2">Custom CSS (The &lt;style&gt; Block)</h3>
+                            <p class="text-slate-600 mb-4">Lines ~15-110 handle specific dynamic interactions.</p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="bg-yellow-50 p-3 rounded border border-yellow-200">
+                                    <h4 class="font-bold text-yellow-800 text-sm">.square.selected</h4>
+                                    <p class="text-xs text-yellow-700">Highlights the active piece (Yellow).</p>
+                                </div>
+                                <div class="bg-green-50 p-3 rounded border border-green-200">
+                                    <h4 class="font-bold text-green-800 text-sm">.square.last-move</h4>
+                                    <p class="text-xs text-green-700">Highlights start/end of previous move.</p>
+                                </div>
+                                <div class="bg-gray-50 p-3 rounded border border-gray-200">
+                                    <h4 class="font-bold text-gray-800 text-sm">.possible-move::after</h4>
+                                    <p class="text-xs text-gray-700">Creates the small dot indicator for valid moves.</p>
+                                </div>
+                                <div class="bg-red-50 p-3 rounded border border-red-200">
+                                    <h4 class="font-bold text-red-800 text-sm">.capture-move::after</h4>
+                                    <p class="text-xs text-red-700">Creates the "ring" indicator for captures.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `
+            },
+            state: {
+                title: "Global State Management",
+                coverage: 50,
+                content: `
+                    <div class="space-y-6">
+                        <div class="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-4">
+                            <p class="text-blue-800 text-sm"><strong>Concept:</strong> The app does not use a framework like React. It uses "Vanilla JS" state variables defined at the top of the script.</p>
+                        </div>
+
+                        <div class="section-card bg-white p-6 rounded-xl border border-slate-200">
+                            <h3 class="font-bold text-lg mb-2">Core State Variables</h3>
+                            <pre class="bg-slate-800 text-slate-100 p-4 rounded-lg text-sm overflow-x-auto code-font mb-4">
+let board = [];           // 8x8 Array representing the grid
+let turn = 'w';           // 'w' or 'b'
+let selectedSquare = null; // {r, c} or null
+let castlingRights = {...}; // Booleans for K/Q side
+let moveList = [];        // Array of SAN strings (e.g., "e4", "Nf3")
+let historyStack = [];    // Array of state objects for Undo functionality
+                            </pre>
+                            <p class="text-sm text-slate-600">These variables are the "Single Source of Truth". When they change, the function <code>renderBoard()</code> reads them to update the UI.</p>
+                        </div>
+
+                        <div class="section-card bg-white p-6 rounded-xl border border-slate-200">
+                            <h3 class="font-bold text-lg mb-2">Configuration Constants</h3>
+                            <p class="text-sm text-slate-600 mb-2">Read-only data maps.</p>
+                            <ul class="list-disc list-inside text-sm text-slate-600">
+                                <li><code>PIECES</code>: Maps codes ('p', 'k') to Unicode symbols ('♟', '♚').</li>
+                                <li><code>ELO_MAP</code>: Maps slider values (0-20) to Stockfish Skill Level.</li>
+                                <li><code>OPENINGS</code>: A dictionary of move sequences to opening names.</li>
+                            </ul>
+                        </div>
+                    </div>
+                `
+            },
+            logic: {
+                title: "Core Chess Logic",
+                coverage: 70,
+                content: `
+                    <div class="space-y-6">
+                        <div class="section-card bg-white p-6 rounded-xl border border-slate-200">
+                            <h3 class="font-bold text-lg mb-2">Move Generation</h3>
+                            <p class="text-sm text-slate-600 mb-4">The app writes its own chess rules rather than importing a library like chess.js.</p>
+                            
+                            <div class="space-y-3">
+                                <div class="border-l-4 border-indigo-500 pl-4">
+                                    <h4 class="font-bold text-sm">getPseudoMoves(r, c, p)</h4>
+                                    <p class="text-xs text-slate-500">Calculates moves based purely on geometry (e.g., Bishops move diagonally). Does not check for Check.</p>
+                                </div>
+                                <div class="border-l-4 border-pink-500 pl-4">
+                                    <h4 class="font-bold text-sm">getLegalMoves(r, c)</h4>
+                                    <p class="text-xs text-slate-500">Filters pseudo moves. It simulates the move on a temporary board, calls <code>isInCheck()</code>, and discards the move if the King is left in danger.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="section-card bg-white p-6 rounded-xl border border-slate-200">
+                            <h3 class="font-bold text-lg mb-2">Special Rules Implementation</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div class="p-3 bg-slate-50 rounded border border-slate-200">
+                                    <div class="font-bold text-sm mb-1">Castling</div>
+                                    <p class="text-xs text-slate-500">Checks if King/Rook moved, checks if path is clear, checks if path is attacked.</p>
+                                </div>
+                                <div class="p-3 bg-slate-50 rounded border border-slate-200">
+                                    <div class="font-bold text-sm mb-1">En Passant</div>
+                                    <p class="text-xs text-slate-500">Tracks <code>enPassantTarget</code> state variable which is set only after a pawn double-move.</p>
+                                </div>
+                                <div class="p-3 bg-slate-50 rounded border border-slate-200">
+                                    <div class="font-bold text-sm mb-1">Promotion</div>
+                                    <p class="text-xs text-slate-500">Detects pawn on rank 0/7. Triggers a modal, pauses engine, waits for user selection.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `
+            },
+            engine: {
+                title: "Stockfish Engine Integration",
+                coverage: 85,
+                content: `
+                    <div class="space-y-6">
+                        <div class="section-card bg-white p-6 rounded-xl border border-slate-200">
+                            <h3 class="font-bold text-lg mb-2">Web Workers</h3>
+                            <p class="text-sm text-slate-600 mb-4">Stockfish is heavy. To prevent the UI from freezing, it runs in a separate thread.</p>
+                            <pre class="bg-slate-800 text-slate-100 p-4 rounded-lg text-sm overflow-x-auto code-font">
+stockfish = new Worker(URL.createObjectURL(blob));
+stockfish.postMessage('uci'); // Initial handshake
+                            </pre>
+                        </div>
+
+                        <div class="section-card bg-white p-6 rounded-xl border border-slate-200">
+                            <h3 class="font-bold text-lg mb-2">Communication Protocol (UCI)</h3>
+                            <p class="text-sm text-slate-600 mb-4">The app communicates with the engine using Universal Chess Interface strings.</p>
+                            <ul class="space-y-3 text-sm">
+                                <li class="flex gap-3 items-start">
+                                    <span class="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs font-mono mt-0.5">IN</span>
+                                    <span class="text-slate-600"><code>position fen [FEN_STRING]</code> <br> Tells engine the current board layout.</span>
+                                </li>
+                                <li class="flex gap-3 items-start">
+                                    <span class="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs font-mono mt-0.5">IN</span>
+                                    <span class="text-slate-600"><code>go movetime 2000</code> <br> Tells engine to think for 2 seconds.</span>
+                                </li>
+                                <li class="flex gap-3 items-start">
+                                    <span class="bg-purple-100 text-purple-800 px-2 py-0.5 rounded text-xs font-mono mt-0.5">OUT</span>
+                                    <span class="text-slate-600"><code>info depth 10 score cp 50</code> <br> Engine update. Parsed to update the Evaluation Bar.</span>
+                                </li>
+                                <li class="flex gap-3 items-start">
+                                    <span class="bg-purple-100 text-purple-800 px-2 py-0.5 rounded text-xs font-mono mt-0.5">OUT</span>
+                                    <span class="text-slate-600"><code>bestmove e2e4</code> <br> The engine's final decision. The app then calls <code>makeMove()</code>.</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                `
+            },
+            gemini: {
+                title: "Gemini AI Coach",
+                coverage: 95,
+                content: `
+                    <div class="space-y-6">
+                        <div class="section-card bg-white p-6 rounded-xl border border-slate-200">
+                            <h3 class="font-bold text-lg mb-2">The Prompt Strategy</h3>
+                            <p class="text-sm text-slate-600 mb-4">The app constructs a dynamic prompt string to send to Google's LLM.</p>
+                            <div class="bg-slate-100 p-4 rounded border border-slate-300 text-sm font-mono text-slate-700">
+                                "You are a friendly and expert Chess Grandmaster Coach...<br>
+                                Current FEN: [Insert Dynamic FEN]<br>
+                                Move History: [Insert Move List]<br>
+                                Provide: 1. Evaluation, 2. Plan, 3. Tactics..."
+                            </div>
+                        </div>
+
+                        <div class="section-card bg-white p-6 rounded-xl border border-slate-200">
+                            <h3 class="font-bold text-lg mb-2">API Handling</h3>
+                            <ul class="list-disc list-inside text-sm text-slate-600 space-y-2">
+                                <li><strong>Key Management:</strong> Checks for internal key first, then checks LocalStorage for user-provided key.</li>
+                                <li><strong>Fetch Request:</strong> Sends a POST request to <code>generativelanguage.googleapis.com</code>.</li>
+                                <li><strong>Markdown Parsing:</strong> The AI returns Markdown text. A custom <code>parseMarkdown()</code> function converts <code>**bold**</code> and lists into HTML for display in the modal.</li>
+                            </ul>
+                        </div>
+                    </div>
+                `
+            },
+            ui: {
+                title: "UI Interaction & Sound",
+                coverage: 100,
+                content: `
+                    <div class="space-y-6">
+                        <div class="section-card bg-white p-6 rounded-xl border border-slate-200">
+                            <h3 class="font-bold text-lg mb-2">Board Rendering</h3>
+                            <p class="text-sm text-slate-600 mb-2"><code>renderBoard()</code> is the most critical UI function.</p>
+                            <ol class="list-decimal list-inside text-sm text-slate-600 space-y-1">
+                                <li>Clears the <code>#board</code> div.</li>
+                                <li>Loops 0-63 (8x8 grid).</li>
+                                <li>Determines square color (Light/Dark).</li>
+                                <li>Checks <code>board[][]</code> array to see if a piece exists.</li>
+                                <li>Creates a <code>span</code> element with the unicode piece symbol.</li>
+                                <li>Applies CSS classes for selection, last move, and legal move dots.</li>
+                            </ol>
+                        </div>
+
+                        <div class="section-card bg-white p-6 rounded-xl border border-slate-200">
+                            <h3 class="font-bold text-lg mb-2">Audio (Tone.js)</h3>
+                            <p class="text-sm text-slate-600 mb-2">Instead of loading MP3 files, the app synthesizes sound in real-time to save bandwidth.</p>
+                            <ul class="list-disc list-inside text-sm text-slate-600">
+                                <li><strong>Move:</strong> PluckSynth (Short, crisp).</li>
+                                <li><strong>Capture:</strong> MembraneSynth (Drum-like, impact).</li>
+                                <li><strong>Checkmate:</strong> PolySynth (Plays a chord/fanfare).</li>
+                            </ul>
+                        </div>
+                    </div>
+                `
+            }
+        };
+
+        // Function to render the selected section
+        function showSection(key) {
+            const section = sections[key];
+            const contentArea = document.getElementById('content-area');
+            
+            // Update Content
+            let htmlContent = `
+                <div class="mb-6 border-b border-slate-200 pb-4 animate-fade-in">
+                    <h2 class="text-3xl font-bold text-slate-800">${section.title}</h2>
+                </div>
+                <div class="animate-slide-up">
+                    ${section.content}
+                </div>
+            `;
+            contentArea.innerHTML = htmlContent;
+
+            // Update Progress Bar
+            document.getElementById('coverage-percent').innerText = section.coverage + "%";
+            document.getElementById('progress-bar').style.width = section.coverage + "%";
+
+            // Update Active Tab Style
+            document.querySelectorAll('aside button').forEach(btn => {
+                btn.classList.remove('active-tab', 'bg-white', 'text-blue-600');
+            });
+            const activeBtn = document.getElementById(`nav-${key}`);
+            activeBtn.classList.add('active-tab', 'bg-white', 'text-blue-600');
+
+            // Initialize Chart if overview
+            if(key === 'overview') {
+                initChart();
+            }
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('codeChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['HTML/CSS Structure', 'Game Logic', 'Engine Integration', 'AI Integration', 'UI/Sound'],
+                    datasets: [{
+                        data: [20, 30, 20, 15, 15],
+                        backgroundColor: [
+                            '#3b82f6', // Blue
+                            '#10b981', // Green
+                            '#f59e0b', // Orange
+                            '#8b5cf6', // Purple
+                            '#ef4444'  // Red
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Initialize app
+        window.onload = function() {
+            showSection('overview');
+        };
+    </script>
+</body>
+</html>
