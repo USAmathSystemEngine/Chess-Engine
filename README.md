@@ -11,3 +11,5 @@ Needs API key that is free for Coach but runs on local Gemini :
 https://g.co/gemini/share/e8e64a2c830c
 Batter 960:
 https://g.co/gemini/share/140c0415f043
+another version :
+https://g.co/gemini/share/b2d33d1c5a31
