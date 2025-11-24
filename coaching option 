@@ -52,7 +52,7 @@
         /* Evaluation Bar Styling */
         .eval-bar-container {
             width: 24px;
-            height: 100%;
+            height: 480px; /* Explicit height matching the board */
             background: #404040;
             border-radius: 4px;
             overflow: hidden;
@@ -115,6 +115,32 @@
             background-color: #f59e0b;
             color: #1e293b;
             border-color: #d97706;
+        }
+        
+        /* Custom scrollbar for move history */
+        #move-history::-webkit-scrollbar { width: 6px; }
+        #move-history::-webkit-scrollbar-track { background: #1e293b; }
+        #move-history::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+        /* Style for LLM output links/citations */
+        #llm-output a { 
+            text-decoration: none; 
+            color: #3b82f6; /* Tailwind blue-500 */
+            transition: color 0.2s;
+        }
+        #llm-output a:hover {
+            color: #60a5fa; /* Tailwind blue-400 */
+            text-decoration: underline;
+        }
+        
+        /* LLM Output Specific Styling for lists */
+        #llm-output ul, #llm-output ol {
+            padding-left: 20px;
+            margin-bottom: 10px;
+        }
+        #llm-output li {
+            margin-bottom: 8px;
+            padding-left: 5px;
+            border-left: 2px solid #a8a29e; /* slate-400 */
         }
     </style>
 </head>
@@ -302,6 +328,28 @@
                     <div class="text-slate-500 italic text-center mt-4">Game Start</div>
                 </div>
             </div>
+            
+            <!-- NEW: Gemini Analysis Panel -->
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg mt-4">
+                <h2 class="text-sm uppercase tracking-wider font-bold text-amber-400 mb-3">
+                    LLM Game Analysis <span class="text-xs text-slate-500">(Gemini)</span>
+                </h2>
+                
+                <div class="flex gap-2 mb-4">
+                    <!-- Updated Button for the new Tree Feature -->
+                    <button onclick="getOpeningAnalysis()" class="flex-1 bg-blue-700 hover:bg-blue-600 text-white py-2 rounded text-sm font-bold border border-blue-600 transition shadow-md flex items-center justify-center">
+                        🌳 Opening Tree (Grounded)
+                    </button>
+                    <button onclick="getGameSummary()" class="flex-1 bg-purple-700 hover:bg-purple-600 text-white py-2 rounded text-sm font-bold border border-purple-600 transition shadow-md flex items-center justify-center">
+                        ✨ Game Summary
+                    </button>
+                </div>
+
+                <div id="llm-output" class="bg-slate-900 text-slate-300 text-sm rounded p-1 min-h-[50px]">
+                    <p class="text-slate-500 italic p-3">Click an analysis button to get LLM insights!</p>
+                </div>
+            </div>
+            <!-- END: Gemini Analysis Panel -->
 
         </div>
     </div>
@@ -318,12 +366,12 @@
             1800, 1900, 2000, 2100, 2200, 2300, 2500, 2700, 2900, 3100, 3200
         ];
         const OPENINGS = {
-            "e2e4": "King's Pawn", "e2e4 e7e5": "Open Game", "e2e4 c7c5": "Sicilian",
-            "e2e4 e7e6": "French", "e2e4 c7c6": "Caro-Kann", "d2d4": "Queen's Pawn",
-            "d2d4 d7d5": "Queen's Gambit", "g1f3": "Reti", "c2c4": "English"
+            "e2e4": "King's Pawn", "e2e4 e7e5": "Open Game", "e2e4 c7c5": "Sicilian Defense",
+            "e2e4 e7e6": "French Defense", "e2e4 c7c6": "Caro-Kann Defense", "d2d4": "Queen's Pawn",
+            "d2d4 d7d5": "Queen's Gambit", "g1f3": "Reti Opening", "c2c4": "English Opening"
         };
 
-        // Custom Styling Defaults (Kept for piece rendering)
+        // Custom Styling Defaults
         let whitePieceColor = '#FFFFFF';
         let whitePieceShadow = '0 0 3px #000, 0 0 3px #000, 0 0 1px #000'; 
 
@@ -338,6 +386,12 @@
         let isGameOver = false, isEnginePaused = true;
         let engineTimeout = null;
         let isFlipped = false;
+
+        // --- LLM API Configuration ---
+        // Use gemini-2.5-flash-preview-09-2025 for grounded and creative text generation
+        const API_URL_TEXT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent';
+        const apiKey = ""; // Canvas environment will inject key
+        // -----------------------------
 
         // --- Tone.js Sound FX Setup ---
         let fx = null;
@@ -364,15 +418,11 @@
             }
         }
         
-        // This function ensures Tone.js context is running before playing sound
         async function playSound(type) {
-            if (!fx) return; // Skip if initialization failed
+            if (!fx) return; 
             try {
-                // Ensure audio context is running (required for browser security)
                 await Tone.start(); 
-            } catch (e) {
-                // If it fails, maybe the context is blocked, just continue silently.
-            }
+            } catch (e) { }
 
             switch (type) {
                 case 'move': fx.move.triggerAttackRelease('C4', '8n'); break;
@@ -394,6 +444,152 @@
                  await Tone.start(); 
                  fx.thinking.start(0);
             }
+        }
+
+        // --- LLM API Functions ---
+
+        /**
+         * Generic function to call the Gemini API with exponential backoff.
+         * @param {string} prompt - The user query.
+         * @param {string} systemInstruction - The LLM's persona/role.
+         * @param {boolean} useGrounding - Whether to use Google Search grounding.
+         * @param {number} maxRetries - Maximum retry attempts.
+         */
+        async function fetchGemini(prompt, systemInstruction, useGrounding = false, maxRetries = 5) {
+            const outputEl = document.getElementById('llm-output');
+            outputEl.innerHTML = '<div class="text-center text-amber-500 font-bold p-4 animate-pulse">Thinking... 🧠</div>';
+            
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                systemInstruction: { parts: [{ text: systemInstruction }] },
+                ...(useGrounding && { tools: [{ "google_search": {} }] }), 
+            };
+
+            let attempt = 0;
+            while (attempt < maxRetries) {
+                try {
+                    const response = await fetch(`${API_URL_TEXT}?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        if (response.status === 429 || response.status >= 500) {
+                            throw new Error(`Server error or rate limit: ${response.status}`);
+                        }
+                        const errorBody = await response.json();
+                        outputEl.innerHTML = `<p class="text-red-400 p-3">API Error: ${errorBody.error.message || 'Unknown error'}</p>`;
+                        return;
+                    }
+
+                    const result = await response.json();
+                    const candidate = result.candidates?.[0];
+
+                    if (candidate && candidate.content?.parts?.[0]?.text) {
+                        const text = candidate.content.parts[0].text;
+                        let sources = [];
+                        const groundingMetadata = candidate.groundingMetadata;
+                        
+                        if (groundingMetadata && groundingMetadata.groundingAttributions) {
+                            sources = groundingMetadata.groundingAttributions
+                                .map(attribution => ({
+                                    uri: attribution.web?.uri,
+                                    title: attribution.web?.title,
+                                }))
+                                .filter(source => source.uri && source.title);
+                        }
+                        
+                        // Basic Markdown List (UL/OL) to HTML conversion for clean output
+                        let htmlText = text;
+                        // Replace numbered lists with <ol><li>
+                        htmlText = htmlText.replace(/^(\d+\.\s)(.*)/gm, '<li><strong>$2</strong></li>');
+                        // Wrap in <ol> if it looks like a list
+                        if (htmlText.includes('<li>')) {
+                            htmlText = `<ol>${htmlText}</ol>`;
+                        }
+                        // Replace newlines not followed by <li> or </ol> with <br>
+                        htmlText = htmlText.replace(/\n(?!<li>)/g, '<br>');
+                        
+
+                        let htmlOutput = `<div class="p-3 text-slate-300">${htmlText}</div>`;
+
+                        if (sources.length > 0) {
+                            htmlOutput += '<div class="p-3 border-t border-slate-700 mt-2">';
+                            htmlOutput += '<h4 class="text-xs font-bold uppercase text-amber-400 mb-1">Sources (Grounded):</h4>';
+                            sources.slice(0, 3).forEach(s => {
+                                htmlOutput += `<a href="${s.uri}" target="_blank" class="text-xs text-blue-400 hover:text-blue-300 block truncate" title="${s.title}">${s.title}</a>`;
+                            });
+                            htmlOutput += '</div>';
+                        }
+                        outputEl.innerHTML = htmlOutput;
+                        return;
+                    } else {
+                        outputEl.innerHTML = '<p class="text-red-400 p-3">LLM returned no content. Try a different query.</p>';
+                        return;
+                    }
+
+                } catch (error) {
+                    // Do not log retries as errors in the console
+                    if (error.message.includes('Server error or rate limit')) {
+                         // Exponential backoff delay
+                        attempt++;
+                        if (attempt < maxRetries) {
+                            const delay = Math.pow(2, attempt) * 100 + Math.random() * 100;
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                            continue; // Retry loop
+                        }
+                    }
+                    outputEl.innerHTML = `<p class="text-red-400 p-3">LLM request failed after ${maxRetries} attempts: ${error.message}</p>`;
+                    break;
+                }
+            }
+        }
+        
+        function getGamePGN() {
+            let pgn = "";
+            for(let i=0; i<moveList.length; i+=2) {
+                pgn += `${(i/2)+1}. ${moveList[i]} `;
+                if (moveList[i+1]) pgn += `${moveList[i+1]} `;
+            }
+            return pgn.trim();
+        }
+
+        // ----------------------------------------------------------------------
+        // NEW/MODIFIED FEATURE: Opening Tree Analysis
+        // ----------------------------------------------------------------------
+        function getOpeningAnalysis() {
+            stopEngine();
+            if (moveList.length > 10) {
+                return showMessage("Opening analysis is best for the first 5 moves. Please use the Engine or Game Summary for middlegame positions.");
+            }
+            if (moveList.length === 0) {
+                return showMessage("Play at least one move to analyze the opening lines.");
+            }
+            
+            const sideToMove = turn === 'w' ? 'White' : 'Black';
+            const pgn = getGamePGN();
+
+            const systemInstruction = `You are a world-class chess database expert and opening theory specialist. Given the current PGN, identify the 3 most common and strategically sound follow-up moves for the side to move (${sideToMove}). For each move, provide: 1) The move in SAN notation. 2) The name of the resulting variation (if it has one, otherwise state 'No specific name'). 3) A concise, 1-sentence strategic rationale explaining the plan. Format the entire output STRICTLY as a numbered Markdown list. Do not include any introductory or concluding text outside the list items.`;
+            
+            const prompt = `Current move sequence (PGN): ${pgn}. The side to move is ${sideToMove}. Provide the top 3 best continuations.`;
+            
+            // Use Google Search grounding to ensure accurate, up-to-date theory
+            fetchGemini(prompt, systemInstruction, true);
+        }
+        // ----------------------------------------------------------------------
+
+
+        function getGameSummary() {
+            stopEngine();
+            if (moveList.length < 5) {
+                return showMessage("Play at least 5 half-moves before requesting a game summary.");
+            }
+            const pgn = getGamePGN();
+            const systemInstruction = "You are a witty, insightful, and slightly dramatic chess commentator and coach. Analyze the provided game PGN (Portable Game Notation) and write a single, highly engaging paragraph summarizing the key narrative, critical turning points, and strategic outlook. Use playful, encouraging language.";
+            const prompt = `Analyze this game PGN: ${pgn}`;
+            // No grounding needed, as this is creative, interpretive commentary.
+            fetchGemini(prompt, systemInstruction, false);
         }
 
         // --- Initialization ---
@@ -492,6 +688,7 @@
             capturedPieces = { w: [], b: [] }; lastMove = null; isGameOver = false;
             
             document.getElementById('game-over-modal').classList.add('hidden');
+            document.getElementById('llm-output').innerHTML = '<p class="text-slate-500 italic p-3">Click an analysis button to get LLM insights!</p>';
             isEnginePaused = true;
             if(isEngineReady) document.getElementById('engine-status-text').innerText = "Engine: Ready (Stopped)";
             
@@ -583,7 +780,15 @@
             const opp = color==='w'?'b':'w';
             for(let i=0; i<8; i++) for(let j=0; j<8; j++) {
                 if(board[i][j]?.color===opp) {
-                    if(getPseudoMoves(i, j, board[i][j]).some(m => m.r===r && m.c===c)) return true;
+                    // Check if an opponent piece *can* attack the target square
+                    const piece = board[i][j];
+                    if (piece.type === 'p') {
+                        // Special check for pawn attacks (which differ from normal moves)
+                        const fwd = piece.color === 'w' ? -1 : 1;
+                        if (r === i + fwd && (c === j - 1 || c === j + 1)) return true;
+                    } else if(getPseudoMoves(i, j, piece).some(m => m.r===r && m.c===c)) {
+                        return true;
+                    }
                 }
             }
             return false;
@@ -1086,3 +1291,4 @@
     </script>
 </body>
 </html>
+
