@@ -13,3 +13,6 @@ Batter 960:
 https://g.co/gemini/share/140c0415f043
 another version :
 https://g.co/gemini/share/b2d33d1c5a31
+
+ai studio version:
+https://aistudio.google.com/app/prompts?state=%7B%22ids%22:%5B%221UNDgtAidfbmYZ4F-uRShofJrD161JQI2%22%5D,%22action%22:%22open%22,%22userId%22:%22104515106980795352775%22,%22resourceKeys%22:%7B%7D%7D&usp=sharing
